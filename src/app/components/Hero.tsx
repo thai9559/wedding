@@ -89,6 +89,7 @@ export  function Hero({ ctaText = "EXPLORE" }: { ctaText?: string }) {
         ]}
         intervalMs={5000}
         intensity={0.6}
+        autoplay={false}
       />
 
       <button

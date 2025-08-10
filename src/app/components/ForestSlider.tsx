@@ -16,6 +16,8 @@ export type ForestSliderProps = {
   intervalMs?: number;
   /** strength of the displacement ripple */
   intensity?: number; // 0..1
+  /** set true to enable auto-play; default false */
+  autoplay?: boolean;
 };
 
 // Small 64x64 cloudy noise as displacement map (data URI) to avoid shipping an extra asset
@@ -26,6 +28,7 @@ export function ForestSlider({
   slides,
   intervalMs = 4500,
   intensity = 0.55,
+  autoplay = false,
 }: ForestSliderProps) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const textRef = useRef<HTMLDivElement | null>(null);
@@ -33,6 +36,7 @@ export function ForestSlider({
   const [appReady, setAppReady] = useState(false);
   const [index, setIndex] = useState(0);
   const nextIndex = useMemo(() => (index + 1) % slides.length, [index, slides.length]);
+  const prevIndexRef = useRef(0);
 
   // Create PIXI app once
   useEffect(() => {
@@ -57,9 +61,13 @@ export function ForestSlider({
 
     const stage = new PIXI.Container();
 
-    // base and next textures
-    const baseSprite = PIXI.Sprite.from(slides[index].src);
-    const nextSprite = PIXI.Sprite.from(slides[nextIndex].src);
+    // base and next textures: from previous slide -> current slide
+    const fromIdx = prevIndexRef.current === index
+      ? (index - 1 + slides.length) % slides.length
+      : prevIndexRef.current;
+    const toIdx = index;
+    const baseSprite = PIXI.Sprite.from(slides[fromIdx].src);
+    const nextSprite = PIXI.Sprite.from(slides[toIdx].src);
     baseSprite.anchor.set(0.5);
     nextSprite.anchor.set(0.5);
 
@@ -89,8 +97,8 @@ export function ForestSlider({
     const ensureReady = async () => {
       try {
         await Promise.all([
-          PIXI.Assets.load(slides[index].src),
-          PIXI.Assets.load(slides[nextIndex].src),
+          PIXI.Assets.load(slides[fromIdx].src),
+          PIXI.Assets.load(slides[toIdx].src),
         ]);
       } catch {}
       fitCover();
@@ -166,11 +174,12 @@ export function ForestSlider({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [index, nextIndex, slides, appReady]);
 
-  // autoplay
+  // autoplay (tắt mặc định)
   useEffect(() => {
+    if (!autoplay) return;
     const id = setInterval(() => setIndex((i) => (i + 1) % slides.length), intervalMs);
     return () => clearInterval(id);
-  }, [slides.length, intervalMs]);
+  }, [slides.length, intervalMs, autoplay]);
 
   return (
     <div
@@ -213,6 +222,25 @@ export function ForestSlider({
             </p>
           )}
         </div>
+      </div>
+
+      {/* Thumbnails ở góc phải dưới */}
+      <div className="pointer-events-auto absolute bottom-6 right-6 z-20 flex gap-3">
+        {slides.map((s, i) => (
+          <button
+            key={i}
+            onClick={() => {
+              if (i === index) return;
+              prevIndexRef.current = index;
+              setIndex(i);
+            }}
+            className={`relative h-28 w-20 overflow-hidden rounded-2xl bg-white/5 ring-1 ring-white/15 transition-transform hover:scale-105 ${i===index?"opacity-100":"opacity-70"}`}
+            aria-label={`Go to slide ${i+1}`}
+          >
+            <Image src={s.src} alt={s.heading} fill className="object-cover" />
+            <div className="absolute inset-0 bg-black/20" />
+          </button>
+        ))}
       </div>
 
       {/* Preload next image with Next/Image for better cache behavior */}
