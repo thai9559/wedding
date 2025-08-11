@@ -9,7 +9,7 @@ export default function Home() {
   return (
     <main className=" bg-white text-neutral-800">
       <Header />
-      <Hero ctaText="VIEW GALLERY"/>
+      <Hero />
       <Intro />
       <Approach />
       <Cards />
